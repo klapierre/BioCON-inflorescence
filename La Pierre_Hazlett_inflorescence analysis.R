@@ -64,7 +64,8 @@ ascl2016 <- read.xlsx('Hazlett_Asctu_ReproductiveCounts_July.xlsx', sheet='July 
 
 #stalks were counted in different sized areas, so converting them all to m2 (agro and amor were 0.25 m2 areas, the rest were 0.5 m2 areas)
 inflor <- rbind(achi2016, agro2016, amor2016, anem2016, ascl2016)%>%
-  mutate(stalks_m2=ifelse(spp=='amor'|spp=='agro', stalks*4, stalks*2))
+  mutate(stalks_m2=ifelse(spp=='amor'|spp=='agro', stalks*4, stalks*2),
+         base_trt=paste(CO2Treatment, Ntreatment, sep='_'), climate_trt=paste(Water.Treatment, Temp.Treatment, sep='_'))
 
 
 # #anova for agropyron N response
@@ -72,7 +73,7 @@ inflor <- rbind(achi2016, agro2016, amor2016, anem2016, ascl2016)%>%
 # model.tables(agroNmodel, 'means')
 
 #anova for all spp N response
-summary(inflorNmodel <- aov(stalks_m2~spp*Ntreatment, data=inflor))
+summary(inflorNmodel <- aov(stalks_m2~spp*Ntreatment*CO2Treatment, data=inflor))
 model.tables(inflorNmodel, 'means')
 
 
@@ -87,3 +88,23 @@ ggplot(data=barGraphStats(data=inflor, variable='stalks_m2', byFactorNames=c('sp
   ylab('Inflorescence number (m-2)') +
   theme(axis.title.x=element_blank(), axis.text.x=element_text(angle=90, vjust=0.5)) +
   ggtitle('N treatment affects\ninflorescence number by species')
+
+
+
+
+#anova for all spp responses to terraCON data
+summary(inflorNmodel <- aov(stalks_m2~spp*Ntreatment*CO2Treatment*Water.Treatment*Temp.Treatment, data=subset(inflor, climate_trt=='H2Oamb_HTamb'|climate_trt=='H2Oamb_HTelv'|climate_trt=='H2Oneg_HTamb'|climate_trt=='H2Oneg_HTelv'))) #need to subset because climate treatments are weirdly non-matching in some cases
+model.tables(inflorNmodel, 'means')
+
+
+#make a graph
+ggplot(data=barGraphStats(data=subset(inflor, climate_trt=='H2Oamb_HTamb'|climate_trt=='H2Oamb_HTelv'|climate_trt=='H2Oneg_HTamb'|climate_trt=='H2Oneg_HTelv'), variable='stalks_m2', byFactorNames=c('base_trt', 'climate_trt')), aes(x=base_trt, y=mean, fill=climate_trt)) +
+  geom_bar(stat='identity', position=position_dodge()) +
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), position=position_dodge(0.9), width=0.2) +
+  scale_y_continuous(breaks=seq(0, 60, 5)) +
+  # scale_x_discrete(labels=c('Achillea', 'Agropyron', 'Amorpha', 'Anemone', 'Asclepias')) +
+  # scale_fill_manual(values=c('#00330033', '#00336666'),
+  #                   labels=c('ambient N', 'enriched N')) +
+  ylab('Inflorescence number (m-2)') +
+  theme(axis.title.x=element_blank(), axis.text.x=element_text(angle=90, vjust=0.5)) +
+  ggtitle('Resource treatments interactively affect inflorescence number')
