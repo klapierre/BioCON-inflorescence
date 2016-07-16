@@ -1,4 +1,5 @@
 library(openxlsx)
+library(lsmeans)
 library(nlme)
 library(ggplot2)
 library(grid)
@@ -43,30 +44,46 @@ barGraphStats <- function(data, variable, byFactorNames) {
 ###################################################
 
 #read in data
-achi2016 <- read.xlsx('Hazlett_Achillea_ReproductiveCounts_July.xlsx', sheet='July 7')
-agro2016 <- read.xlsx('Hazlett_Agro_ReproductiveCounts_July.xlsx', sheet='July 5')
-amor2016 <- read.xlsx('Hazlett_Amoca_ReproductiveCounts_July.xlsx', sheet='July 7')
-anem2016 <- read.xlsx('Hazlett_Anenome_ReproductiveCounts_July.xlsx', sheet='July 5')
-ascl2016 <- read.xlsx('Hazlett_Asctu_ReproductiveCounts_July.xlsx', sheet='July 12')
-lupi2016 <- read.xlsx('Hazlett_LupineSeedCount_June.xlsx', sheet='June 21')
+achi2016 <- read.xlsx('Hazlett_Achillea_ReproductiveCounts_July.xlsx', sheet='July 7')%>%
+  mutate(spp='achi')
+names(achi2016)[names(achi2016)=='Inflor.Stalk.#'] <- 'stalks'
+agro2016 <- read.xlsx('Hazlett_Agro_ReproductiveCounts_July.xlsx', sheet='July 5')%>%
+  mutate(spp='agro')
+names(agro2016)[names(agro2016)=='#.of.Stalks'] <- 'stalks'
+amor2016 <- read.xlsx('Hazlett_Amoca_ReproductiveCounts_July.xlsx', sheet='July 7')%>%
+  mutate(spp='amor')
+names(amor2016)[names(amor2016)=='#.of.Flowers'] <- 'stalks'
+anem2016 <- read.xlsx('Hazlett_Anenome_ReproductiveCounts_July.xlsx', sheet='July 5')%>%
+  mutate(spp='anem')
+names(anem2016)[names(anem2016)=='Compound.#'] <- 'stalks'
+ascl2016 <- read.xlsx('Hazlett_Asctu_ReproductiveCounts_July.xlsx', sheet='July 12')%>%
+  mutate(spp='ascl', stalks=(Budding.Stalks+Flowering.Stalks+Stalks.Seeding))%>%
+  select(-NonFlowering.Stalks, -Budding.Stalks, -Flowering.Stalks, -Stalks.Seeding)
+
+# lupi2016 <- read.xlsx('Hazlett_LupineSeedCount_June.xlsx', sheet='June 21') #lupi is complicated by seed number, so do this later
+
+#stalks were counted in different sized areas, so converting them all to m2 (agro and amor were 0.25 m2 areas, the rest were 0.5 m2 areas)
+inflor <- rbind(achi2016, agro2016, amor2016, anem2016, ascl2016)%>%
+  mutate(stalks_m2=ifelse(spp=='amor'|spp=='agro', stalks*4, stalks*2))
 
 
+# #anova for agropyron N response
+# summary(agroNmodel <- aov(stalks~Ntreatment, data=agro2016))
+# model.tables(agroNmodel, 'means')
+
+#anova for all spp N response
+summary(inflorNmodel <- aov(stalks_m2~spp*Ntreatment, data=inflor))
+model.tables(inflorNmodel, 'means')
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#make a graph
+ggplot(data=barGraphStats(data=inflor, variable='stalks_m2', byFactorNames=c('spp', 'Ntreatment')), aes(x=spp, y=mean, fill=Ntreatment)) +
+  geom_bar(stat='identity', position=position_dodge()) +
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), position=position_dodge(0.9), width=0.2) +
+  scale_y_continuous(breaks=seq(0, 60, 5)) +
+  scale_x_discrete(labels=c('Achillea', 'Agropyron', 'Amorpha', 'Anemone', 'Asclepias')) +
+  scale_fill_manual(values=c('#00330033', '#00336666'),
+                    labels=c('ambient N', 'enriched N')) +
+  ylab('Inflorescence number (m-2)') +
+  theme(axis.title.x=element_blank(), axis.text.x=element_text(angle=90, vjust=0.5)) +
+  ggtitle('N treatment affects\ninflorescence number by species')
