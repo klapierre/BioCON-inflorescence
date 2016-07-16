@@ -73,21 +73,22 @@ inflor <- rbind(achi2016, agro2016, amor2016, anem2016, ascl2016)%>%
 # model.tables(agroNmodel, 'means')
 
 #anova for all spp N response
-summary(inflorNmodel <- aov(stalks_m2~spp*Ntreatment*CO2Treatment, data=subset(inflor, climate_trt=='NA_NA')))
+summary(inflorNmodel <- aov(stalks_m2~spp*Ntreatment*CO2Treatment*as.factor(CountOfSpecies), data=subset(inflor, climate_trt=='NA_NA')))
 model.tables(inflorNmodel, 'means')
 
 
 #make a graph
-ggplot(data=barGraphStats(data=subset(inflor, climate_trt=='NA_NA'), variable='stalks_m2', byFactorNames=c('spp', 'Ntreatment')), aes(x=spp, y=mean, fill=Ntreatment)) +
+ggplot(data=barGraphStats(data=subset(inflor, climate_trt=='NA_NA'), variable='stalks_m2', byFactorNames=c('spp', 'Ntreatment', 'CountOfSpecies')), aes(x=spp, y=mean, fill=Ntreatment)) +
   geom_bar(stat='identity', position=position_dodge()) +
   geom_errorbar(aes(ymin=mean-se, ymax=mean+se), position=position_dodge(0.9), width=0.2) +
-  scale_y_continuous(breaks=seq(0, 60, 5)) +
+  # scale_y_continuous(breaks=seq(0, 60, 5)) +
   scale_x_discrete(labels=c('Achillea', 'Agropyron', 'Amorpha', 'Anemone', 'Asclepias')) +
   scale_fill_manual(values=c('#00330033', '#00336666'),
                     labels=c('ambient N', 'enriched N')) +
-  ylab('Inflorescence number (m-2)') +
+  ylab(expression(paste('Inflorescence number (m'^{-2},')'))) +
   theme(axis.title.x=element_blank(), axis.text.x=element_text(angle=90, vjust=0.5)) +
-  ggtitle('N treatment affects\ninflorescence number by species')
+  ggtitle('N treatment affects\ninflorescence number by species') +
+  facet_wrap(~CountOfSpecies, ncol=2, scales='free')
 
 
 
